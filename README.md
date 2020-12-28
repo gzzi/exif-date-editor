@@ -11,3 +11,5 @@ Note that first match is taken so order matter.
 Note if the file doesn't have exif data, it will not be possible to edit it and the file will not be shown.
 
 **Warning** Use at Your Own Risk
+
+![Screen shot](doc\screenshot.png)
