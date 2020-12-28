@@ -75,11 +75,18 @@ def write_new_date(filename: Path, new_date: datetime):
     logging.info(status + 'complete')
 
 
+def has_exif(filename: Path):
+    with open(filename, 'rb') as image_file:
+        my_image = Image(image_file)
+        return my_image.has_exif
+
+
 def get_img_file_in_folder(folder: Path):
     return [f
             for f in folder.iterdir()
             if f.is_file()
-            and f.suffix.lower() in [".jpg", ".jpeg"]
+            and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tiff"]
+            and has_exif(f)
             ]
 
 
@@ -94,9 +101,10 @@ file_list_column = [
     ],
     [
         sg.Listbox(
-            values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
+            values=[], enable_events=True, size=(40, 20), key="-FILE LIST-", select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED
         )
     ],
+    [sg.Text("Datetime guess format strings")],
     [
         sg.Multiline(default_text=DATE_DEFAULT_PATTERN, size=(40, 20), key="-DATE_PATTERN-")
     ],
@@ -119,7 +127,9 @@ image_viewer_column = [
      sg.CalendarButton("Edit")
     ],
     [sg.Button("Update", key="-BUPDATE-"),
-     sg.Button("Update all files in selected folder", key="-BUPDATE_ALL-")],
+     sg.Button("Update selected files", key="-BUPDATE_ALL_SELECTED-"),
+     sg.Button("Update all files in directory", key="-BUPDATE_ALL_DIR-"),],
+    [sg.ProgressBar(10, size=(60, 10), key="-PROGRESS-", visible=False)],
     [sg.Text(size=(60, 1), key="-STATUS-")],
 ]
 
@@ -129,7 +139,7 @@ layout = [
         sg.Column(file_list_column),
         sg.VSeperator(),
         sg.Column(image_viewer_column),
-    ]
+    ],
 ]
 
 logging.info('Starting...')
@@ -138,7 +148,7 @@ window = sg.Window("Image Viewer", layout)
 # Run the Event Loop
 while True:
     event, values = window.read()
-
+    window["-PROGRESS-"].Update(0,0,False)
     status = ''
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
@@ -162,14 +172,12 @@ while True:
 
             with open(filename, 'rb') as image_file:
                 my_image = Image(image_file)
-                if my_image.has_exif:
-                    window["-TEXIF_DATE-"].update(
-                        datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT))
-                    window["-TEXIF_DATE_ORIGINAL-"].update(
-                        datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT))
-                    window["-TEXIF_DATE_DIGITALIZED-"].update(
-                        datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT))
-
+                window["-TEXIF_DATE-"].update(
+                    datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT))
+                window["-TEXIF_DATE_ORIGINAL-"].update(
+                    datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT))
+                window["-TEXIF_DATE_DIGITALIZED-"].update(
+                    datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT))
             try:
                 guess_date = guess_date_from_string(filename.stem, values['-DATE_PATTERN-'])
                 window["-TNEW_DATE-"].update(guess_date)
@@ -183,12 +191,32 @@ while True:
             write_new_date(filename, new_date)
             status = 'Success'
 
-        elif event == '-BUPDATE_ALL-':
+        elif event == '-BUPDATE_ALL_DIR-':
             new_date = values["-TNEW_DATE-"]
             new_date = guess_date_from_string(new_date, values['-DATE_PATTERN-'])
 
-            for filepath in get_img_file_in_folder(Path(values["-FOLDER-"])):
+            filelist = get_img_file_in_folder(Path(values["-FOLDER-"]))
+            progress_bar = window["-PROGRESS-"]
+            currProgress = 0
+            progress_bar.Update(currProgress, len(filelist), True)
+            for filepath in filelist:
                 write_new_date(filepath, new_date)
+                currProgress = currProgress + 1
+                progress_bar.UpdateBar(currProgress)
+            status = 'Success'
+
+        elif event == '-BUPDATE_ALL_SELECTED-':
+            new_date = values["-TNEW_DATE-"]
+            new_date = guess_date_from_string(new_date, values['-DATE_PATTERN-'])
+
+            filelist = [Path(f) for f in values["-FILE LIST-"]]
+            progress_bar = window["-PROGRESS-"]
+            currProgress = 0
+            progress_bar.Update(currProgress, len(filelist), True)
+            for filepath in filelist:
+                write_new_date(filepath, new_date)
+                currProgress = currProgress + 1
+                progress_bar.UpdateBar(currProgress)
             status = 'Success'
 
     except Exception as e:
