@@ -12,4 +12,4 @@ Note if the file doesn't have exif data, it will not be possible to edit it and 
 
 **Warning** Use at Your Own Risk
 
-![Screen shot](doc\screenshot.png)
+![Screen shot](https://raw.githubusercontent.com/gzzi/exif-date-editor/master/doc/screenshot.png)
