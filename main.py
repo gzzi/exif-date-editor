@@ -92,6 +92,7 @@ def get_img_file_in_folder(folder: Path):
 
 
 setup_logger()
+sg.theme('SystemDefault1')
 
 # First the window layout in 2 columns
 file_list_column = [
@@ -166,24 +167,6 @@ while True:
             folder = Path(folder)
             window["-FILE LIST-"].update([f.name for f in get_img_file_in_folder(folder)])
 
-        elif event == "-FILE LIST-":  # A file was chosen from the listbox
-            filename = Path(values["-FOLDER-"]) / values["-FILE LIST-"][0]
-            logging.info('File selected: ' + str(filename))
-            window["-TFILEPATH-"].update(filename)
-
-            with open(filename, 'rb') as image_file:
-                my_image = Image(image_file)
-                window["-TEXIF_DATE-"].update(
-                    datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT))
-                window["-TEXIF_DATE_ORIGINAL-"].update(
-                    datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT))
-                window["-TEXIF_DATE_DIGITALIZED-"].update(
-                    datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT))
-            try:
-                guess_date = guess_date_from_string(filename.stem, values['-DATE_PATTERN-'])
-                window["-TNEW_DATE-"].update(guess_date)
-            except ValueError:
-                pass
         elif event == '-BUPDATE-':
             new_date = values["-TNEW_DATE-"]
             new_date = guess_date_from_string(new_date, values['-DATE_PATTERN-'])
@@ -210,7 +193,7 @@ while True:
             new_date = values["-TNEW_DATE-"]
             new_date = guess_date_from_string(new_date, values['-DATE_PATTERN-'])
 
-            filelist = [Path(f) for f in values["-FILE LIST-"]]
+            filelist = [Path(values["-FOLDER-"]) / f for f in values["-FILE LIST-"]]
             progress_bar = window["-PROGRESS-"]
             currProgress = 0
             progress_bar.Update(currProgress, len(filelist), True)
@@ -219,6 +202,25 @@ while True:
                 currProgress = currProgress + 1
                 progress_bar.UpdateBar(currProgress)
             status = 'Success'
+
+        if event == "-FILE LIST-" or event.startswith('-BUPDATE'):  # A file was chosen from the listbox
+            filename = Path(values["-FOLDER-"]) / values["-FILE LIST-"][0]
+            logging.info('File selected: ' + str(filename))
+            window["-TFILEPATH-"].update(filename)
+
+            with open(filename, 'rb') as image_file:
+                my_image = Image(image_file)
+                window["-TEXIF_DATE-"].update(
+                    datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT))
+                window["-TEXIF_DATE_ORIGINAL-"].update(
+                    datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT))
+                window["-TEXIF_DATE_DIGITALIZED-"].update(
+                    datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT))
+            try:
+                guess_date = guess_date_from_string(filename.stem, values['-DATE_PATTERN-'])
+                window["-TNEW_DATE-"].update(guess_date)
+            except ValueError:
+                pass
 
     except Exception as e:
         logging.warning('Got Exception: ' + str(e))
