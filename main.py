@@ -62,17 +62,18 @@ def guess_date_from_string(txt: str, date_patterns: str) -> datetime:
 
 
 def write_new_date(filename: Path, new_date: datetime):
-    logging.info('will update selected file ' + str(filename) + ' with ' + str(new_date))
-
+    logging.info('update file ' + str(filename) + ' with ' + str(new_date))
     with open(filename, 'rb') as image_file:
         image = Image(image_file)
 
-    image.datetime_original = new_date.strftime(DATETIME_STR_FORMAT)
-    image.datetime = image.datetime_original
+    new_date_str = new_date.strftime(DATETIME_STR_FORMAT)
+    if image.datetime_original:
+        image.datetime_original = new_date_str
+    if image.datetime:
+        image.datetime = new_date_str
 
     with open(filename, 'wb') as new_image_file:
         new_image_file.write(image.get_file())
-    logging.info(status + 'complete')
 
 
 def has_exif(filename: Path):
