@@ -9,9 +9,10 @@ from datetime import datetime
 import re
 
 
-def init_logger(level=logging.DEBUG):
-    logfile = 'log_' + datetime.now().strftime('%y%m%d_%H%M%S') + '.txt'
-    logging.basicConfig(filename=logfile, level=level)
+def init_logger(level=logging.DEBUG, to_file=True):
+    if to_file:
+        logfile = 'log_' + datetime.now().strftime('%y%m%d_%H%M%S') + '.txt'
+        logging.basicConfig(filename=logfile, level=level)
     root = logging.getLogger()
     root.setLevel(level)
     handler = logging.StreamHandler(sys.stdout)
@@ -39,26 +40,34 @@ DATE_DEFAULT_PATTERN = """%Y-%m-%d %H:%M:%S
 
 
 def guess_date_from_string(txt: str, date_patterns: str = DATE_DEFAULT_PATTERN) -> datetime:
-    input_txt = [txt]
     date_patterns = date_patterns.split('\n')
-    if txt and not txt[0].isdigit():
-        m = re.search(r"\d", txt)
-        if m:
-            input_txt.append(txt[m.start():])
 
-    if txt and not txt[-1].isdigit():
-        m = re.search(r".*\d", txt)
-        if m:
-            input_txt.append(txt[:m.end()])
-
-    logging.debug('will search on ' + str(input_txt))
-    logging.debug('using patterns: ' + str(date_patterns))
-    for el in input_txt:
+    def test_all_pattern(input_txt: str):
+        logging.debug('will search on ' + input_txt)
         for pattern in date_patterns:
             try:
-                return datetime.strptime(el, pattern)
+                return datetime.strptime(input_txt, pattern)
             except ValueError:
                 continue
+        raise ValueError('no default datetime found for ' + txt)
+
+    if not txt:
+        raise ValueError('empty string')
+
+    try:
+        return test_all_pattern(txt)
+    except ValueError:
+        pass
+
+    # look for biggest string with one delimiter start/ending with digit
+    m = re.findall(r"(?:\d+.?)+\d", txt)
+    if m:
+        txt = max(m, key=len)
+        try:
+            return test_all_pattern(txt)
+        except ValueError:
+            pass
+
     logging.debug('no default datetime found for ' + txt)
     raise ValueError('no default datetime found for ' + txt)
 
