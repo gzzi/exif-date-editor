@@ -125,6 +125,7 @@ def init_window() -> sg.Window:
          sg.CalendarButton("Edit")
         ],
         [sg.Button("Update", key="-BUPDATE-"),
+         sg.Button("Update & select next", key="-BUPDATE_SEL_NEXT-"),
          sg.Button("Update selected files", key="-BUPDATE_ALL_SELECTED-"),
          sg.Button("Update all files in directory", key="-BUPDATE_ALL_DIR-"),],
         [sg.ProgressBar(10, size=(60, 10), key="-PROGRESS-", visible=False)],
@@ -161,13 +162,25 @@ def handle_events(window: sg.Window):
                 folder = Path(folder)
                 window["-FILE LIST-"].update([f.name for f in get_img_file_in_folder(folder)])
 
-            elif event == '-BUPDATE-':
+            elif event == '-BUPDATE-' or event == '-BUPDATE_SEL_NEXT-':
                 new_date = values["-TNEW_DATE-"]
                 new_date = guess_date_from_string(new_date, values['-DATE_PATTERN-'])
+                selected_files = values["-FILE LIST-"]
+                if len(selected_files) != 1:
+                    raise LookupError("select one file")
 
-                filename = Path(values["-FOLDER-"]) / values["-FILE LIST-"][0]
-                write_new_date(filename, new_date)
+                filepath = Path(values["-FOLDER-"]) / selected_files[0]
+                write_new_date(filepath, new_date)
                 status = 'Success'
+
+                if event == '-BUPDATE_SEL_NEXT-':
+                    files: sg.Listbox = window["-FILE LIST-"]
+                    next_idx = files.GetIndexes()[0]
+                    next_idx = next_idx + 1
+                    if next_idx >= len(files.GetListValues()):
+                        next_idx = 0
+                    logging.info('select next list element:' + str(next_idx))
+                    files.Update(set_to_index=next_idx)
 
             elif event == '-BUPDATE_ALL_DIR-':
                 new_date = values["-TNEW_DATE-"]
@@ -198,23 +211,34 @@ def handle_events(window: sg.Window):
                 status = 'Success'
 
             if event == "-FILE LIST-" or event.startswith('-BUPDATE'):
-                filename = Path(values["-FOLDER-"]) / values["-FILE LIST-"][0]
-                logging.info('File selected: ' + str(filename))
-                window["-TFILEPATH-"].update(filename)
+                files: sg.Listbox = window["-FILE LIST-"]
+                filepath = Path(values["-FOLDER-"]) / files.GetListValues()[files.GetIndexes()[0]]
+                logging.info('File selected: ' + str(filepath))
+                window["-TFILEPATH-"].update(filepath.name)
 
-                with open(filename, 'rb') as image_file:
-                    my_image = Image(image_file)
-                    window["-TEXIF_DATE-"].update(
-                        datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT))
-                    window["-TEXIF_DATE_ORIGINAL-"].update(
-                        datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT))
-                    window["-TEXIF_DATE_DIGITALIZED-"].update(
-                        datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT))
                 try:
-                    guess_date = guess_date_from_string(filename.stem, values['-DATE_PATTERN-'])
+                    guess_date = guess_date_from_string(filepath.stem, values['-DATE_PATTERN-'])
                     window["-TNEW_DATE-"].update(guess_date)
                 except ValueError:
                     pass
+
+                exif_date = 'No exif date'
+                exif_date_original = exif_date
+                exif_date_digitalized = exif_date
+                try:
+                    with open(filepath, 'rb') as image_file:
+                        my_image = Image(image_file)
+
+                        if my_image.has_exif:
+                            exif_date = datetime.strptime(my_image['datetime'], DATETIME_STR_FORMAT)
+                            exif_date_original = datetime.strptime(my_image['datetime_original'], DATETIME_STR_FORMAT)
+                            exif_date_digitalized = datetime.strptime(my_image['datetime_digitized'], DATETIME_STR_FORMAT)
+                except AttributeError as e:
+                    logging.warning(str(e))
+                finally:
+                    window["-TEXIF_DATE-"].update(exif_date)
+                    window["-TEXIF_DATE_ORIGINAL-"].update(exif_date_original)
+                    window["-TEXIF_DATE_DIGITALIZED-"].update(exif_date_digitalized)
 
         except Exception as e:
             logging.warning('Got Exception: ' + str(e))
