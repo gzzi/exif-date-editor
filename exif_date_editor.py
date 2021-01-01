@@ -123,7 +123,7 @@ def init_window() -> sg.Window:
          sg.Button("Update & select next", key="-BUPDATE_SEL_NEXT-", disabled=True),
          sg.Button("Update selected files", key="-BUPDATE_ALL_SELECTED-", disabled=True),
          sg.Button("Update all files in directory", key="-BUPDATE_ALL_DIR-", disabled=True),],
-        [sg.ProgressBar(10, key="-PROGRESS-", visible=False, size=(70, 20))],
+        [sg.ProgressBar(10, key="-PROGRESS-", visible=False, size=(50, 20))],
         [sg.Text(key="-STATUS-", size=(70, 1))],
         [sg.Text("Datetime guess format strings")],
         [sg.Multiline(default_text=DATE_DEFAULT_PATTERN, key="-DATE_PATTERN-")],
@@ -133,12 +133,9 @@ def init_window() -> sg.Window:
 
 
 def change_buttons_disabled_state(window: sg.Window, state: bool):
-    window["-TNEW_DATE-"].update(disabled=state)
-    window["-BEDIT_DATE-"].update(disabled=state)
     window["-BUPDATE-"].update(disabled=state)
     window["-BUPDATE_SEL_NEXT-"].update(disabled=state)
     window["-BUPDATE_ALL_SELECTED-"].update(disabled=state)
-    window["-BUPDATE_ALL_DIR-"].update(disabled=state)
 
 
 def handle_events(window: sg.Window):
@@ -162,6 +159,9 @@ def handle_events(window: sg.Window):
                 logging.info('Folder selected:' + folder)
                 folder = Path(folder)
                 window["-FILE LIST-"].update([f.name for f in get_img_file_in_folder(folder)], disabled=False)
+                window["-TNEW_DATE-"].update(disabled=False)
+                window["-BEDIT_DATE-"].update(disabled=False)
+                window["-BUPDATE_ALL_DIR-"].update(disabled=False)
 
             elif event == '-BUPDATE-' or event == '-BUPDATE_SEL_NEXT-':
                 new_date = values["-TNEW_DATE-"]
@@ -211,7 +211,7 @@ def handle_events(window: sg.Window):
                     progress_bar.UpdateBar(curr_progress)
                 status = 'Success'
 
-            if event == "-FILE LIST-" or event.startswith('-BUPDATE'):
+            if (event == "-FILE LIST-" or event.startswith('-BUPDATE')) and window["-FILE LIST-"].GetIndexes():
                 change_buttons_disabled_state(window, False)
                 files: sg.Listbox = window["-FILE LIST-"]
                 filepath = Path(values["-FOLDER-"]) / files.GetListValues()[files.GetIndexes()[0]]
