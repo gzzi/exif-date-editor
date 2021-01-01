@@ -78,27 +78,19 @@ def write_new_date(filename: Path, new_date: datetime):
         image = Image(image_file)
 
     new_date_str = new_date.strftime(DATETIME_STR_FORMAT)
-    if image.datetime_original:
-        image.datetime_original = new_date_str
-    if image.datetime:
-        image.datetime = new_date_str
+
+    image.datetime_original = new_date_str
+    image.datetime = new_date_str
 
     with open(filename, 'wb') as new_image_file:
         new_image_file.write(image.get_file())
-
-
-def has_exif(filename: Path):
-    with open(filename, 'rb') as image_file:
-        my_image = Image(image_file)
-        return my_image.has_exif
 
 
 def get_img_file_in_folder(folder: Path) -> list:
     return [f
             for f in folder.iterdir()
             if f.is_file()
-            and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tiff"]
-            and has_exif(f)
+            and f.suffix.lower() in [".jpg", ".jpeg"]
             ]
 
 
