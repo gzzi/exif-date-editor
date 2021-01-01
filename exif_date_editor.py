@@ -97,49 +97,48 @@ def get_img_file_in_folder(folder: Path) -> list:
 def init_window() -> sg.Window:
     sg.theme('SystemDefault1')
 
-    WINDOW_LEFT_COLUMN = [
+    WINDOW_LAYOUT = [
         [sg.Text("Image Folder"),
-         sg.In(size=(25, 1), enable_events=True, key="-FOLDER-"),
+         sg.In(enable_events=True, key="-FOLDER-"),
          sg.FolderBrowse(),
-        ],
-        [sg.Listbox(values=[], enable_events=True, size=(40, 20), key="-FILE LIST-",
-                    select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED )
-        ],
-        [sg.Text("Datetime guess format strings")],
-        [sg.Multiline(default_text=DATE_DEFAULT_PATTERN, size=(40, 20), key="-DATE_PATTERN-")],
-    ]
-
-    WINDOW_RIGHT_COLUMN = [
+         ],
+        [sg.Listbox(values=[], enable_events=True, key="-FILE LIST-", disabled=True,
+                    select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED, size=(70, 20))
+         ],
         [sg.Text("File"),
-         sg.Text(size=(60, 1), key="-TFILEPATH-")],
+         sg.Text(size=(70, 1), key="-TFILEPATH-")],
         [sg.HSeparator()],  # =====================================
         [sg.Text("Exif date", size=(20, 1)),
-         sg.Text(size=(40, 1), key="-TEXIF_DATE-")],
+         sg.Text(key="-TEXIF_DATE-", size=(20, 1))],
         [sg.Text("Exif date original", size=(20, 1)),
-         sg.Text(size=(40, 1), key="-TEXIF_DATE_ORIGINAL-")],
+         sg.Text(key="-TEXIF_DATE_ORIGINAL-", size=(20, 1))],
         [sg.Text("Exif date digitalized", size=(20, 1)),
-         sg.Text(size=(40, 1), key="-TEXIF_DATE_DIGITALIZED-")],
+         sg.Text(key="-TEXIF_DATE_DIGITALIZED-", size=(20, 1))],
         [sg.HSeparator()],  # =====================================
         [sg.Text("New original date", size=(20, 1)),
-         sg.In(size=(20, 1), key="-TNEW_DATE-"),
-         sg.CalendarButton("Edit")
+         sg.In(key="-TNEW_DATE-", disabled=True),
+         sg.CalendarButton("Edit", key="-BEDIT_DATE-", disabled=True)
         ],
-        [sg.Button("Update", key="-BUPDATE-"),
-         sg.Button("Update & select next", key="-BUPDATE_SEL_NEXT-"),
-         sg.Button("Update selected files", key="-BUPDATE_ALL_SELECTED-"),
-         sg.Button("Update all files in directory", key="-BUPDATE_ALL_DIR-"),],
-        [sg.ProgressBar(10, size=(60, 10), key="-PROGRESS-", visible=False)],
-        [sg.Text(size=(60, 1), key="-STATUS-")],
+        [sg.Button("Update", key="-BUPDATE-", disabled=True),
+         sg.Button("Update & select next", key="-BUPDATE_SEL_NEXT-", disabled=True),
+         sg.Button("Update selected files", key="-BUPDATE_ALL_SELECTED-", disabled=True),
+         sg.Button("Update all files in directory", key="-BUPDATE_ALL_DIR-", disabled=True),],
+        [sg.ProgressBar(10, key="-PROGRESS-", visible=False, size=(70, 20))],
+        [sg.Text(key="-STATUS-", size=(70, 1))],
+        [sg.Text("Datetime guess format strings")],
+        [sg.Multiline(default_text=DATE_DEFAULT_PATTERN, key="-DATE_PATTERN-")],
     ]
 
-    WINDOW_LAYOUT = [
-        [
-            sg.Column(WINDOW_LEFT_COLUMN),
-            sg.VSeperator(),
-            sg.Column(WINDOW_RIGHT_COLUMN),
-        ],
-    ]
     return sg.Window("Exif date editor", WINDOW_LAYOUT)
+
+
+def change_buttons_disabled_state(window: sg.Window, state: bool):
+    window["-TNEW_DATE-"].update(disabled=state)
+    window["-BEDIT_DATE-"].update(disabled=state)
+    window["-BUPDATE-"].update(disabled=state)
+    window["-BUPDATE_SEL_NEXT-"].update(disabled=state)
+    window["-BUPDATE_ALL_SELECTED-"].update(disabled=state)
+    window["-BUPDATE_ALL_DIR-"].update(disabled=state)
 
 
 def handle_events(window: sg.Window):
@@ -153,6 +152,8 @@ def handle_events(window: sg.Window):
         try:
             # Folder name was filled in, make a list of files in the folder
             if event == "-FOLDER-":
+                change_buttons_disabled_state(window, True)
+
                 folder = values["-FOLDER-"]
                 if not folder:
                     continue
@@ -160,7 +161,7 @@ def handle_events(window: sg.Window):
                 # Get list of files in folder
                 logging.info('Folder selected:' + folder)
                 folder = Path(folder)
-                window["-FILE LIST-"].update([f.name for f in get_img_file_in_folder(folder)])
+                window["-FILE LIST-"].update([f.name for f in get_img_file_in_folder(folder)], disabled=False)
 
             elif event == '-BUPDATE-' or event == '-BUPDATE_SEL_NEXT-':
                 new_date = values["-TNEW_DATE-"]
@@ -211,6 +212,7 @@ def handle_events(window: sg.Window):
                 status = 'Success'
 
             if event == "-FILE LIST-" or event.startswith('-BUPDATE'):
+                change_buttons_disabled_state(window, False)
                 files: sg.Listbox = window["-FILE LIST-"]
                 filepath = Path(values["-FOLDER-"]) / files.GetListValues()[files.GetIndexes()[0]]
                 logging.info('File selected: ' + str(filepath))
