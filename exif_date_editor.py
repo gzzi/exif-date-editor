@@ -241,9 +241,15 @@ def handle_events(window: sg.Window):
                     window["-TEXIF_DATE_DIGITALIZED-"].update(exif_date_digitalized)
 
         except Exception as e:
-            logging.warning('Got Exception: ' + str(e))
-            window["-STATUS-"].update('Error: ' + str(e))
-            pass
+            tb_init = e.__traceback__
+            tb = tb_init.tb_next
+            tb_lineno = tb_init.tb_lineno
+            while tb is not None and tb.tb_frame.f_code.co_filename == tb_init.tb_frame.f_code.co_filename:  # as long as we are in this file
+                tb_lineno = tb.tb_lineno
+                tb = tb.tb_next
+            msg = str(tb_lineno) + ': ' + str(type(e)) + ' ' + str(e)
+            logging.warning('Got Exception: ' + msg)
+            window["-STATUS-"].update('Error ' + msg)
         else:
             window["-STATUS-"].update(status)
 
